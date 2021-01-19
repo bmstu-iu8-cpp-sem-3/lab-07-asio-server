@@ -16,7 +16,7 @@ private:
 public:
     talk_to_client() : time(std::chrono::system_clock::now()), socket_(service_) {}
 
-    tcp::socket& get_socket() {
+    tcp::socket &get_socket() {
         return socket_;
     }
 
@@ -24,11 +24,11 @@ public:
         return username;
     }
 
-    void reset_username(std::string& new_username) {
+    void reset_username(std::string &new_username) {
         username = new_username;
     }
 
-    void answer_to_the_client(const std::string& an_answer) {
+    void answer_to_the_client(const std::string &an_answer) {
         socket_.write_some(boost::asio::buffer(an_answer));
     }
 
@@ -39,14 +39,14 @@ public:
 
 };
 
-typedef boost::shared_ptr<talk_to_client> client_ptr;
-typedef std::vector<client_ptr> client_vector;
+typedef boost::shared_ptr <talk_to_client> client_ptr;
+typedef std::vector <client_ptr> client_vector;
 client_vector clients;
 boost::recursive_mutex cs;
 
 std::string get_users() {
     std::string result;
-    for (auto& client : clients) result += client->get_username() + " ";
+    for (auto &client : clients) result += client->get_username() + " ";
     return result;
 }
 
@@ -79,7 +79,7 @@ void handle_clients_thread() {
     while (true) {
         boost::this_thread::sleep(boost::posix_time::millisec(1));
         boost::recursive_mutex::scoped_lock lk(cs);
-        for (auto& client : clients) {
+        for (auto &client : clients) {
             std::string command;
             client->get_socket().read_some(boost::asio::buffer(command, 1024));
             if (command == "client_list_chaned")
@@ -88,7 +88,14 @@ void handle_clients_thread() {
             BOOST_LOG_TRIVIAL(info)
                     << "Answered to client \n username: " << client->get_username() << "\n";
         }
-        clients.erase(std::remove_if(clients.begin(), clients.end(),boost::bind(&talk_to_client::check_time_out, _1)),
+        clients.erase(std::remove_if(clients.begin(), clients.end(), boost::bind(&talk_to_client::check_time_out, _1)),
                       clients.end());
     }
+}
+
+int main() {
+    boost::thread_group threads;
+    threads.create_thread(accept_thread);
+    threads.create_thread(handle_clients_thread);
+    threads.join_all();
 }
